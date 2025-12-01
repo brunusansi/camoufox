@@ -60,20 +60,30 @@ export async function POST(
     const repoRoot = path.resolve(process.cwd(), "..");
     const launcherScript = path.join(repoRoot, "scripts", "launch_profile.py");
 
+    // Determine Python command - can be overridden via environment variable
+    const pythonCmd = process.env.PYTHON_CMD || 
+      (process.platform === "win32" ? "python" : "python3");
+
     // Spawn the Python launcher script
     // This runs in the background and doesn't block the HTTP response
-    const pythonCmd = process.platform === "win32" ? "python" : "python3";
-
+    // Using 'pipe' for stderr to enable potential error logging while keeping the process detached
     const child = spawn(pythonCmd, [launcherScript, "--profile", profilePath], {
       cwd: repoRoot,
       detached: true,
-      stdio: "ignore",
+      stdio: ["ignore", "ignore", "pipe"],
       // Environment variables to help the script find dependencies
       env: {
         ...process.env,
         PYTHONPATH: path.join(repoRoot, "pythonlib"),
       },
     });
+
+    // Log any stderr output for debugging (non-blocking)
+    if (child.stderr) {
+      child.stderr.on("data", (data) => {
+        console.error(`[launch_profile.py] ${data}`);
+      });
+    }
 
     // Detach the child process so it continues running after this process exits
     child.unref();

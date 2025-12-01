@@ -7,6 +7,16 @@ import { Button, Card, CardContent } from "@/components/ui";
 import type { ProfileConfig } from "@/lib/profile-types";
 
 /**
+ * Display constants for the profiles list.
+ */
+const DISPLAY = {
+  /** Maximum length for proxy server display */
+  PROXY_SERVER_MAX_LENGTH: 30,
+  /** Maximum length for user agent display in table */
+  USER_AGENT_MAX_LENGTH: 60,
+} as const;
+
+/**
  * Profile list item with simplified display fields.
  */
 interface ProfileListItem {
@@ -26,7 +36,7 @@ function toListItem(profile: ProfileConfig): ProfileListItem {
   let proxyDisplay = "Nenhum";
   if (profile.proxy?.type && profile.proxy.type !== "none") {
     proxyDisplay = profile.proxy.server
-      ? `${profile.proxy.type.toUpperCase()}: ${profile.proxy.server.substring(0, 30)}...`
+      ? `${profile.proxy.type.toUpperCase()}: ${profile.proxy.server.substring(0, DISPLAY.PROXY_SERVER_MAX_LENGTH)}...`
       : profile.proxy.type.toUpperCase();
   }
 
@@ -318,8 +328,8 @@ export default function ProfilesPage() {
                               className="text-sm text-foreground-muted font-mono truncate block max-w-xs"
                               title={profile.userAgent}
                             >
-                              {profile.userAgent.length > 60
-                                ? `${profile.userAgent.substring(0, 60)}...`
+                              {profile.userAgent.length > DISPLAY.USER_AGENT_MAX_LENGTH
+                                ? `${profile.userAgent.substring(0, DISPLAY.USER_AGENT_MAX_LENGTH)}...`
                                 : profile.userAgent}
                             </span>
                           </td>

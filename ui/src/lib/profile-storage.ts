@@ -15,8 +15,14 @@ import { ProfileConfig, PROFILE_SCHEMA_VERSION, VALIDATION, sanitizeString, vali
 /**
  * Get the profiles directory path.
  * Defaults to `profiles/` in the repository root.
+ * 
+ * Can be overridden via CAMOUFOX_PROFILES_DIR environment variable.
  */
 export function getProfilesDir(): string {
+  // Allow override via environment variable
+  if (process.env.CAMOUFOX_PROFILES_DIR) {
+    return process.env.CAMOUFOX_PROFILES_DIR;
+  }
   // The UI is in ui/, so we go up one level to get repo root
   const repoRoot = path.resolve(process.cwd(), "..");
   return path.join(repoRoot, "profiles");
@@ -53,7 +59,8 @@ export async function listProfiles(): Promise<ProfileConfig[]> {
     const profiles: ProfileConfig[] = [];
 
     for (const file of files) {
-      if (!file.endsWith(".json") || file === "README.md") continue;
+      // Only process JSON files, skip README.md and other files
+      if (!file.endsWith(".json")) continue;
 
       try {
         const filePath = path.join(dir, file);

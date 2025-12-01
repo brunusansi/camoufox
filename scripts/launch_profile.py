@@ -89,13 +89,17 @@ def launch_browser_with_profile(profile: ProfileConfig) -> None:
         
         # Keep the browser open until user closes it
         try:
-            # Wait indefinitely - user will close the browser window
-            page.wait_for_timeout(float("inf"))
+            # Wait for browser to be closed by user
+            # Using a loop with short timeouts to allow for graceful shutdown
+            while True:
+                try:
+                    # Check if page is still connected every 30 seconds
+                    page.wait_for_timeout(30000)  # 30 seconds
+                except Exception:
+                    # Page/browser was closed
+                    break
         except KeyboardInterrupt:
             print("\nEncerrando navegador...")
-        except Exception:
-            # Browser was closed by user
-            pass
 
 
 def main():
