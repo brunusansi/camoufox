@@ -838,6 +838,20 @@ flowchart TD
 
 ---
 
+## FAQ
+
+### O Camoufox é compatível com Mac M3/M4?
+
+Sim! O Camoufox pode emular fingerprints de Macs modernos com chips Apple Silicon (M1, M2, M3, M4). Embora não exista um "modo M3/M4" oficial nos navegadores, a compatibilidade é alcançada através de:
+
+- **Fingerprint coerente**: User Agent, WebGL, screen resolution, e outras propriedades são configuradas para simular um Mac moderno.
+- **Templates dedicados**: A interface inclui templates pré-configurados para MacBook M3 e M4 que podem ser selecionados ao criar um novo perfil.
+- **Refinamento contínuo**: Os fingerprints serão atualizados com dados reais de dispositivos M3/M4 em versões futuras.
+
+Para mais detalhes técnicos, consulte a [documentação de compatibilidade M-Series](docs/M_SERIES_COMPATIBILITY.md).
+
+---
+
 ## Thanks
 
 - [LibreWolf](https://gitlab.com/librewolf-community/browser/source) - Debloat patches & build system inspiration
