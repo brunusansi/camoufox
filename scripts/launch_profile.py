@@ -67,7 +67,7 @@ def launch_browser_with_profile(profile: ProfileConfig) -> None:
         proxy=playwright_options.get("proxy"),
         headless=False,
         persistent_context=use_persistent,
-        user_data_dir=profile.storage.user_data_dir if use_persistent else None,
+        #user_data_dir=profile.storage.user_data_dir if use_persistent else None,
     ) as browser:
         # Create a new page (or use the existing one in persistent context)
         if use_persistent:
