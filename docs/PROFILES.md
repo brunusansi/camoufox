@@ -2,6 +2,18 @@
 
 This document explains the Camoufox profile system, which allows you to create, manage, and maintain consistent browser fingerprints for web automation and anti-detection.
 
+## Quick Start with the UI
+
+The **recommended way** to create and manage profiles is through the Camoufox web interface:
+
+1. Start the UI: `cd ui && pnpm dev`
+2. Open http://localhost:3000/profiles
+3. Click "Novo perfil" to create a new profile
+4. Choose a template or customize from scratch
+5. Click "Iniciar" to launch Camoufox with your profile
+
+See [INSTALL.md](../INSTALL.md) for complete setup instructions.
+
 ## Philosophy
 
 **There is no such thing as 100% undetectable.** Instead, Camoufox focuses on:

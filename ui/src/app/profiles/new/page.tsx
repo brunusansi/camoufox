@@ -362,32 +362,23 @@ export default function NewProfilePage() {
     }
   };
 
+  const [isCreating, setIsCreating] = useState(false);
+
   const handleCreate = async () => {
+    if (isCreating) return;
+    setIsCreating(true);
+
     const sanitize = (str: string): string => {
       if (!str) return str;
       return str.slice(0, 5000);
     };
 
-    const generateId = (): string => {
-      if (typeof crypto !== "undefined" && crypto.randomUUID) {
-        return crypto.randomUUID();
-      }
-      return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-        const r = (Math.random() * 16) | 0;
-        const v = c === "x" ? r : (r & 0x3) | 0x8;
-        return v.toString(16);
-      });
-    };
-
+    // Build the profile object (ID and timestamps are generated server-side)
     const profile = {
-      id: generateId(),
-      name: sanitize(formData.name) || "Untitled Profile",
+      name: sanitize(formData.name) || "Perfil sem nome",
       notes: sanitize(formData.notes),
-      version: "1.0.0",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
       target_os: formData.os,
-      browser_family: "firefox",
+      browser_family: "firefox" as const,
       navigator: {
         user_agent: sanitize(formData.userAgent),
         platform: sanitize(formData.platform),
@@ -397,11 +388,11 @@ export default function NewProfilePage() {
         languages: [formData.locale, formData.locale.split("-")[0]]
       },
       screen: {
-        width: Math.max(0, Math.min(formData.screenWidth, 10000)),
-        height: Math.max(0, Math.min(formData.screenHeight, 10000)),
-        avail_width: Math.max(0, Math.min(formData.screenWidth, 10000)),
+        width: Math.max(100, Math.min(formData.screenWidth, 10000)),
+        height: Math.max(100, Math.min(formData.screenHeight, 10000)),
+        avail_width: Math.max(100, Math.min(formData.screenWidth, 10000)),
         avail_height: Math.max(
-          0,
+          60,
           Math.min(formData.screenHeight - 40, 10000)
         ),
         device_pixel_ratio: Math.max(
@@ -434,33 +425,31 @@ export default function NewProfilePage() {
       }
     };
 
-    console.log("Creating profile:", JSON.stringify(profile, null, 2));
+    console.log("Criando perfil:", JSON.stringify(profile, null, 2));
 
     try {
-      const existingProfiles = JSON.parse(
-        localStorage.getItem("camoufox_profiles") || "[]"
-      );
+      const response = await fetch("/api/profiles", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(profile),
+      });
 
-      if (existingProfiles.length >= 100) {
-        alert(
-          "Limite de perfis atingido. Delete alguns perfis antes de criar novos."
-        );
-        return;
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Erro ao criar perfil");
       }
-
-      existingProfiles.push(profile);
-      localStorage.setItem(
-        "camoufox_profiles",
-        JSON.stringify(existingProfiles)
-      );
 
       alert("Perfil criado com sucesso!");
       router.push("/profiles");
     } catch (e) {
-      console.error("Failed to save profile:", e);
-      alert(
-        "Erro ao salvar perfil. Verifique o espaço de armazenamento."
-      );
+      console.error("Erro ao salvar perfil:", e);
+      const message = e instanceof Error ? e.message : "Erro ao salvar perfil";
+      alert(`Erro: ${message}`);
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -1192,22 +1181,44 @@ export default function NewProfilePage() {
             <Button
               variant="primary"
               onClick={handleCreate}
-              disabled={consistencyIssues.some((i) => i.level === "error")}
+              disabled={consistencyIssues.some((i) => i.level === "error") || isCreating}
             >
-              <svg
-                className="w-4 h-4 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              Criar perfil
+              {isCreating ? (
+                <svg
+                  className="w-4 h-4 mr-2 animate-spin"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+              ) : (
+                <svg
+                  className="w-4 h-4 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              )}
+              {isCreating ? "Criando..." : "Criar perfil"}
             </Button>
           )}
         </div>
