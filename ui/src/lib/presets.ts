@@ -172,10 +172,29 @@ export function getPresetsByCategory(
 }
 
 /**
- * Retorna todos os presets de Mac M-series (M1, M2, M3, M4).
+ * Retorna todos os presets de Mac M-series (atualmente M3 e M4).
+ * Novos presets (M1, M2, etc.) podem ser adicionados conforme fingerprints reais forem coletados.
  */
 export function getMacMSeriesPresets(): ProfilePreset[] {
   return PROFILE_PRESETS.filter((preset) =>
     preset.tags.includes("apple silicon")
+  );
+}
+
+/**
+ * Lista de IDs de templates M-series para verificação robusta.
+ * Usar esta lista em vez de string matching para evitar falsos positivos.
+ */
+export const MAC_M_SERIES_TEMPLATE_IDS = [
+  "macos_m3_chrome_moderno",
+  "macos_m4_chrome_moderno",
+] as const;
+
+/**
+ * Verifica se um template ID é de Mac M-series.
+ */
+export function isMacMSeriesTemplate(templateId: string): boolean {
+  return MAC_M_SERIES_TEMPLATE_IDS.includes(
+    templateId as typeof MAC_M_SERIES_TEMPLATE_IDS[number]
   );
 }

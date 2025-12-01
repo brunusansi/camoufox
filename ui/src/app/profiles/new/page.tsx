@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Shell } from "@/components/layout";
 import { Button, Card, CardContent, Stepper } from "@/components/ui";
-import { PROFILE_PRESETS, getPresetById } from "@/lib/presets";
+import { PROFILE_PRESETS, getPresetById, isMacMSeriesTemplate } from "@/lib/presets";
 
 const steps = [
   { label: "Básico" },
@@ -130,14 +130,14 @@ export default function NewProfilePage() {
             </div>
 
             {/* Help text for Mac M-series templates */}
-            {formData.template && formData.template.includes("macos_m") && (
+            {formData.template && isMacMSeriesTemplate(formData.template) && (
               <div className="p-4 rounded-lg bg-accent/10 border border-accent/20">
                 <h4 className="text-sm font-medium text-accent mb-2">
                   ℹ️ Sobre os templates Mac M-series
                 </h4>
                 <p className="text-xs text-foreground-muted">
                   Estes templates são <strong>perfis Mac modernos</strong> baseados em fingerprint coerente
-                  (User Agent, WebGL, screen, etc.). Diferenças exatas entre M1/M2/M3/M4 são principalmente
+                  (User Agent, WebGL, screen, etc.). Diferenças exatas entre M3/M4 são principalmente
                   de fingerprint fino, que será refinado com dados reais em futuras versões.
                 </p>
               </div>
