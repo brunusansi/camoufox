@@ -1,49 +1,293 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Shell } from "@/components/layout";
 import { Button, Card, CardContent, Stepper } from "@/components/ui";
 
 const steps = [
+  { label: "Template" },
   { label: "Básico" },
   { label: "Fingerprint" },
   { label: "Rede" },
   { label: "Storage" },
-  { label: "Automação" },
   { label: "Resumo" },
 ];
 
+// Profile templates based on presets
+const PROFILE_TEMPLATES = [
+  {
+    id: "macos_apple_silicon",
+    name: "MacBook M1 (Retina)",
+    description: "MacBook with Apple M1 chip and Retina display",
+    icon: "🍎",
+    os: "macos",
+    userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:133.0) Gecko/20100101 Firefox/133.0",
+    platform: "MacIntel",
+    oscpu: "Intel Mac OS X 10.15",
+    screenWidth: 1920,
+    screenHeight: 1080,
+    devicePixelRatio: 2.0,
+    webglVendor: "Apple Inc.",
+    webglRenderer: "Apple M1",
+    timezone: "America/Los_Angeles",
+    locale: "en-US",
+  },
+  {
+    id: "macos_standard",
+    name: "MacBook (Standard)",
+    description: "MacBook with standard (non-Retina) display",
+    icon: "🍎",
+    os: "macos",
+    userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:133.0) Gecko/20100101 Firefox/133.0",
+    platform: "MacIntel",
+    oscpu: "Intel Mac OS X 10.15",
+    screenWidth: 1440,
+    screenHeight: 900,
+    devicePixelRatio: 1.0,
+    webglVendor: "Apple Inc.",
+    webglRenderer: "Apple M1",
+    timezone: "America/Los_Angeles",
+    locale: "en-US",
+  },
+  {
+    id: "windows_11_nvidia",
+    name: "Windows 11 (NVIDIA)",
+    description: "Windows 11 desktop with NVIDIA GPU",
+    icon: "🪟",
+    os: "windows",
+    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0",
+    platform: "Win32",
+    oscpu: "Windows NT 10.0; Win64; x64",
+    screenWidth: 1920,
+    screenHeight: 1080,
+    devicePixelRatio: 1.0,
+    webglVendor: "Google Inc. (NVIDIA)",
+    webglRenderer: "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    timezone: "America/New_York",
+    locale: "en-US",
+  },
+  {
+    id: "windows_11_intel",
+    name: "Windows 11 (Intel)",
+    description: "Windows 11 laptop with Intel integrated GPU",
+    icon: "🪟",
+    os: "windows",
+    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0",
+    platform: "Win32",
+    oscpu: "Windows NT 10.0; Win64; x64",
+    screenWidth: 1920,
+    screenHeight: 1080,
+    devicePixelRatio: 1.25,
+    webglVendor: "Google Inc. (Intel)",
+    webglRenderer: "ANGLE (Intel, Intel(R) UHD Graphics 630 Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    timezone: "America/New_York",
+    locale: "en-US",
+  },
+  {
+    id: "linux_desktop",
+    name: "Linux Desktop",
+    description: "Ubuntu-like Linux desktop with Intel GPU",
+    icon: "🐧",
+    os: "linux",
+    userAgent: "Mozilla/5.0 (X11; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0",
+    platform: "Linux x86_64",
+    oscpu: "Linux x86_64",
+    screenWidth: 1920,
+    screenHeight: 1080,
+    devicePixelRatio: 1.0,
+    webglVendor: "Mesa",
+    webglRenderer: "Mesa Intel(R) UHD Graphics 620 (KBL GT2)",
+    timezone: "America/New_York",
+    locale: "en-US",
+  },
+  {
+    id: "custom",
+    name: "Custom Profile",
+    description: "Start from scratch with custom settings",
+    icon: "⚙️",
+    os: "windows",
+    userAgent: "",
+    platform: "",
+    oscpu: "",
+    screenWidth: 1920,
+    screenHeight: 1080,
+    devicePixelRatio: 1.0,
+    webglVendor: "",
+    webglRenderer: "",
+    timezone: "America/New_York",
+    locale: "en-US",
+  },
+];
+
+// Consistency check types
+interface ConsistencyIssue {
+  level: "error" | "warning" | "info";
+  message: string;
+  field: string;
+  suggestion: string;
+}
+
 interface FormData {
+  templateId: string;
   name: string;
   notes: string;
   userAgent: string;
   os: string;
+  platform: string;
+  oscpu: string;
+  screenWidth: number;
+  screenHeight: number;
+  devicePixelRatio: number;
+  webglVendor: string;
+  webglRenderer: string;
+  timezone: string;
+  locale: string;
   proxyType: string;
   proxyAddress: string;
+  webrtcMode: string;
   storagePath: string;
-  startupUrl: string;
-  startupScript: string;
+}
+
+// Consistency validation functions (client-side)
+function validateConsistency(data: FormData): ConsistencyIssue[] {
+  const issues: ConsistencyIssue[] = [];
+
+  // OS/Platform check
+  const osPatterns: Record<string, string[]> = {
+    macos: ["MacIntel", "MacPPC"],
+    windows: ["Win32", "Win64"],
+    linux: ["Linux"],
+  };
+  
+  if (data.platform && osPatterns[data.os]) {
+    const matches = osPatterns[data.os].some(p => data.platform.includes(p));
+    if (!matches) {
+      issues.push({
+        level: "error",
+        message: `Platform "${data.platform}" does not match OS "${data.os}"`,
+        field: "platform",
+        suggestion: `Use one of: ${osPatterns[data.os].join(", ")}`,
+      });
+    }
+  }
+
+  // OS/User-Agent check
+  const uaPatterns: Record<string, string[]> = {
+    macos: ["Macintosh", "Mac OS X"],
+    windows: ["Windows NT"],
+    linux: ["Linux", "X11"],
+  };
+  
+  if (data.userAgent && uaPatterns[data.os]) {
+    const matches = uaPatterns[data.os].some(p => data.userAgent.includes(p));
+    if (!matches) {
+      issues.push({
+        level: "error",
+        message: `User-Agent does not contain expected patterns for "${data.os}"`,
+        field: "userAgent",
+        suggestion: `User-Agent should contain one of: ${uaPatterns[data.os].join(", ")}`,
+      });
+    }
+  }
+
+  // WebGL/OS check
+  if (data.webglRenderer) {
+    if (data.os === "macos" && (data.webglRenderer.toLowerCase().includes("direct3d") || data.webglRenderer.toLowerCase().includes("angle"))) {
+      issues.push({
+        level: "error",
+        message: "Direct3D/ANGLE renderer detected with macOS target",
+        field: "webglRenderer",
+        suggestion: "macOS typically uses Apple GPU or OpenGL renderers",
+      });
+    }
+    if (data.os === "windows" && data.webglRenderer.toLowerCase().includes("apple m")) {
+      issues.push({
+        level: "error",
+        message: "Apple renderer detected with Windows target",
+        field: "webglRenderer",
+        suggestion: "Windows typically uses ANGLE (Direct3D) or native GPU renderers",
+      });
+    }
+  }
+
+  // Device pixel ratio check for macOS
+  if (data.os === "macos" && data.devicePixelRatio !== 1.0 && data.devicePixelRatio !== 2.0) {
+    issues.push({
+      level: "warning",
+      message: `Device pixel ratio ${data.devicePixelRatio} is unusual for macOS`,
+      field: "devicePixelRatio",
+      suggestion: "macOS typically uses 1.0 (standard) or 2.0 (Retina)",
+    });
+  }
+
+  // WebRTC/Proxy check
+  if (data.proxyType !== "none" && data.proxyAddress && data.webrtcMode === "default") {
+    issues.push({
+      level: "warning",
+      message: "WebRTC is enabled with proxy but mode is 'default'",
+      field: "webrtcMode",
+      suggestion: "Consider setting webrtc mode to 'disabled' or 'proxy_only' to prevent IP leaks",
+    });
+  }
+
+  return issues;
 }
 
 export default function NewProfilePage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<FormData>({
+    templateId: "",
     name: "",
     notes: "",
-    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
+    userAgent: "",
     os: "windows",
+    platform: "",
+    oscpu: "",
+    screenWidth: 1920,
+    screenHeight: 1080,
+    devicePixelRatio: 1.0,
+    webglVendor: "",
+    webglRenderer: "",
+    timezone: "America/New_York",
+    locale: "en-US",
     proxyType: "none",
     proxyAddress: "",
+    webrtcMode: "default",
     storagePath: "",
-    startupUrl: "",
-    startupScript: "",
   });
+  const [consistencyIssues, setConsistencyIssues] = useState<ConsistencyIssue[]>([]);
 
-  const updateFormData = (field: keyof FormData, value: string) => {
+  // Update consistency issues when form data changes
+  useEffect(() => {
+    setConsistencyIssues(validateConsistency(formData));
+  }, [formData]);
+
+  const updateFormData = <K extends keyof FormData>(field: K, value: FormData[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const applyTemplate = (templateId: string) => {
+    const template = PROFILE_TEMPLATES.find(t => t.id === templateId);
+    if (template) {
+      setFormData(prev => ({
+        ...prev,
+        templateId: template.id,
+        os: template.os,
+        userAgent: template.userAgent,
+        platform: template.platform,
+        oscpu: template.oscpu,
+        screenWidth: template.screenWidth,
+        screenHeight: template.screenHeight,
+        devicePixelRatio: template.devicePixelRatio,
+        webglVendor: template.webglVendor,
+        webglRenderer: template.webglRenderer,
+        timezone: template.timezone,
+        locale: template.locale,
+      }));
+    }
   };
 
   const handleNext = () => {
@@ -58,15 +302,117 @@ export default function NewProfilePage() {
     }
   };
 
-  const handleCreate = () => {
-    console.log("Creating profile with data:", formData);
-    alert("Perfil criado com sucesso! (mock)");
+  const handleCreate = async () => {
+    // Generate profile JSON
+    const profile = {
+      id: crypto.randomUUID(),
+      name: formData.name || "Untitled Profile",
+      notes: formData.notes,
+      version: "1.0.0",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      target_os: formData.os,
+      browser_family: "firefox",
+      navigator: {
+        user_agent: formData.userAgent,
+        platform: formData.platform,
+        oscpu: formData.oscpu,
+        hardware_concurrency: 8,
+        max_touch_points: 0,
+        languages: [formData.locale, formData.locale.split("-")[0]],
+      },
+      screen: {
+        width: formData.screenWidth,
+        height: formData.screenHeight,
+        avail_width: formData.screenWidth,
+        avail_height: formData.screenHeight - 40,
+        device_pixel_ratio: formData.devicePixelRatio,
+        color_depth: 24,
+      },
+      locale: {
+        language: formData.locale.split("-")[0],
+        region: formData.locale.split("-")[1] || "US",
+        timezone: formData.timezone,
+      },
+      webgl: {
+        enabled: true,
+        vendor: formData.webglVendor,
+        renderer: formData.webglRenderer,
+      },
+      proxy: {
+        type: formData.proxyType,
+        server: formData.proxyAddress,
+      },
+      webrtc: {
+        mode: formData.webrtcMode,
+      },
+      storage: {
+        user_data_dir: formData.storagePath || null,
+      },
+    };
+
+    console.log("Creating profile:", JSON.stringify(profile, null, 2));
+    
+    // In a real implementation, this would save to the backend
+    // For now, we'll save to localStorage as a demo
+    const existingProfiles = JSON.parse(localStorage.getItem("camoufox_profiles") || "[]");
+    existingProfiles.push(profile);
+    localStorage.setItem("camoufox_profiles", JSON.stringify(existingProfiles));
+    
+    alert("Perfil criado com sucesso!");
     router.push("/profiles");
   };
 
   const renderStepContent = () => {
     switch (currentStep) {
       case 0:
+        // Template selection step
+        return (
+          <div className="space-y-6">
+            <p className="text-sm text-foreground-muted">
+              Escolha um modelo pré-configurado ou comece do zero. Os modelos são baseados em fingerprints reais capturados de dispositivos.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {PROFILE_TEMPLATES.map((template) => (
+                <div
+                  key={template.id}
+                  onClick={() => applyTemplate(template.id)}
+                  className={`
+                    p-4 rounded-lg border-2 cursor-pointer transition-all
+                    ${formData.templateId === template.id 
+                      ? "border-accent bg-accent/10" 
+                      : "border-border hover:border-accent/50 bg-background-tertiary"}
+                  `}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">{template.icon}</span>
+                    <div className="flex-1">
+                      <h4 className="text-sm font-medium text-foreground">{template.name}</h4>
+                      <p className="text-xs text-foreground-muted mt-1">{template.description}</p>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-background border border-border text-foreground-muted">
+                          {template.os}
+                        </span>
+                        {template.devicePixelRatio > 1 && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-accent/10 border border-accent/30 text-accent">
+                            HiDPI
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {formData.templateId === template.id && (
+                      <svg className="w-5 h-5 text-accent" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      case 1:
+        // Basic info step
         return (
           <div className="space-y-6">
             <div>
@@ -97,23 +443,39 @@ export default function NewProfilePage() {
             </div>
           </div>
         );
-      case 1:
+      case 2:
+        // Fingerprint step
         return (
           <div className="space-y-6">
-            <div>
-              <label htmlFor="os" className="block text-sm font-medium text-foreground mb-2">
-                Sistema Operacional
-              </label>
-              <select
-                id="os"
-                value={formData.os}
-                onChange={(e) => updateFormData("os", e.target.value)}
-                className="w-full px-4 py-2.5 bg-background-tertiary border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-colors"
-              >
-                <option value="windows">Windows</option>
-                <option value="macos">macOS</option>
-                <option value="linux">Linux</option>
-              </select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="os" className="block text-sm font-medium text-foreground mb-2">
+                  Sistema Operacional
+                </label>
+                <select
+                  id="os"
+                  value={formData.os}
+                  onChange={(e) => updateFormData("os", e.target.value)}
+                  className="w-full px-4 py-2.5 bg-background-tertiary border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-colors"
+                >
+                  <option value="windows">Windows</option>
+                  <option value="macos">macOS</option>
+                  <option value="linux">Linux</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="platform" className="block text-sm font-medium text-foreground mb-2">
+                  Platform
+                </label>
+                <input
+                  type="text"
+                  id="platform"
+                  value={formData.platform}
+                  onChange={(e) => updateFormData("platform", e.target.value)}
+                  placeholder="Ex: MacIntel, Win32"
+                  className="w-full px-4 py-2.5 bg-background-tertiary border border-border rounded-lg text-foreground placeholder-foreground-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-colors"
+                />
+              </div>
             </div>
             <div>
               <label htmlFor="userAgent" className="block text-sm font-medium text-foreground mb-2">
@@ -123,32 +485,99 @@ export default function NewProfilePage() {
                 id="userAgent"
                 value={formData.userAgent}
                 onChange={(e) => updateFormData("userAgent", e.target.value)}
-                rows={3}
+                rows={2}
                 className="w-full px-4 py-2.5 bg-background-tertiary border border-border rounded-lg text-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-colors resize-none"
               />
-              <p className="text-xs text-foreground-muted mt-2">
-                O User Agent será gerado automaticamente pelo BrowserForge se deixado vazio.
-              </p>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label htmlFor="screenWidth" className="block text-sm font-medium text-foreground mb-2">
+                  Screen Width
+                </label>
+                <input
+                  type="number"
+                  id="screenWidth"
+                  value={formData.screenWidth}
+                  onChange={(e) => updateFormData("screenWidth", parseInt(e.target.value) || 0)}
+                  className="w-full px-4 py-2.5 bg-background-tertiary border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-colors"
+                />
+              </div>
+              <div>
+                <label htmlFor="screenHeight" className="block text-sm font-medium text-foreground mb-2">
+                  Screen Height
+                </label>
+                <input
+                  type="number"
+                  id="screenHeight"
+                  value={formData.screenHeight}
+                  onChange={(e) => updateFormData("screenHeight", parseInt(e.target.value) || 0)}
+                  className="w-full px-4 py-2.5 bg-background-tertiary border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-colors"
+                />
+              </div>
+              <div>
+                <label htmlFor="devicePixelRatio" className="block text-sm font-medium text-foreground mb-2">
+                  Pixel Ratio
+                </label>
+                <input
+                  type="number"
+                  id="devicePixelRatio"
+                  step="0.25"
+                  value={formData.devicePixelRatio}
+                  onChange={(e) => updateFormData("devicePixelRatio", parseFloat(e.target.value) || 1.0)}
+                  className="w-full px-4 py-2.5 bg-background-tertiary border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-colors"
+                />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="webglRenderer" className="block text-sm font-medium text-foreground mb-2">
+                WebGL Renderer
+              </label>
+              <input
+                type="text"
+                id="webglRenderer"
+                value={formData.webglRenderer}
+                onChange={(e) => updateFormData("webglRenderer", e.target.value)}
+                placeholder="Ex: Apple M1, NVIDIA GeForce RTX 3060"
+                className="w-full px-4 py-2.5 bg-background-tertiary border border-border rounded-lg text-foreground placeholder-foreground-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-colors"
+              />
             </div>
           </div>
         );
-      case 2:
+      case 3:
+        // Network step
         return (
           <div className="space-y-6">
-            <div>
-              <label htmlFor="proxyType" className="block text-sm font-medium text-foreground mb-2">
-                Tipo de Proxy
-              </label>
-              <select
-                id="proxyType"
-                value={formData.proxyType}
-                onChange={(e) => updateFormData("proxyType", e.target.value)}
-                className="w-full px-4 py-2.5 bg-background-tertiary border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-colors"
-              >
-                <option value="none">Nenhum</option>
-                <option value="http">HTTP/HTTPS</option>
-                <option value="socks5">SOCKS5</option>
-              </select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="proxyType" className="block text-sm font-medium text-foreground mb-2">
+                  Tipo de Proxy
+                </label>
+                <select
+                  id="proxyType"
+                  value={formData.proxyType}
+                  onChange={(e) => updateFormData("proxyType", e.target.value)}
+                  className="w-full px-4 py-2.5 bg-background-tertiary border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-colors"
+                >
+                  <option value="none">Nenhum</option>
+                  <option value="http">HTTP/HTTPS</option>
+                  <option value="socks5">SOCKS5</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="webrtcMode" className="block text-sm font-medium text-foreground mb-2">
+                  WebRTC Mode
+                </label>
+                <select
+                  id="webrtcMode"
+                  value={formData.webrtcMode}
+                  onChange={(e) => updateFormData("webrtcMode", e.target.value)}
+                  className="w-full px-4 py-2.5 bg-background-tertiary border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-colors"
+                >
+                  <option value="default">Default (enabled)</option>
+                  <option value="proxy_only">Proxy Only</option>
+                  <option value="disabled">Disabled</option>
+                </select>
+              </div>
             </div>
             {formData.proxyType !== "none" && (
               <div>
@@ -165,9 +594,38 @@ export default function NewProfilePage() {
                 />
               </div>
             )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="timezone" className="block text-sm font-medium text-foreground mb-2">
+                  Timezone
+                </label>
+                <input
+                  type="text"
+                  id="timezone"
+                  value={formData.timezone}
+                  onChange={(e) => updateFormData("timezone", e.target.value)}
+                  placeholder="Ex: America/New_York"
+                  className="w-full px-4 py-2.5 bg-background-tertiary border border-border rounded-lg text-foreground placeholder-foreground-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-colors"
+                />
+              </div>
+              <div>
+                <label htmlFor="locale" className="block text-sm font-medium text-foreground mb-2">
+                  Locale
+                </label>
+                <input
+                  type="text"
+                  id="locale"
+                  value={formData.locale}
+                  onChange={(e) => updateFormData("locale", e.target.value)}
+                  placeholder="Ex: en-US"
+                  className="w-full px-4 py-2.5 bg-background-tertiary border border-border rounded-lg text-foreground placeholder-foreground-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-colors"
+                />
+              </div>
+            </div>
           </div>
         );
-      case 3:
+      case 4:
+        // Storage step
         return (
           <div className="space-y-6">
             <div>
@@ -197,70 +655,106 @@ export default function NewProfilePage() {
             </div>
           </div>
         );
-      case 4:
-        return (
-          <div className="space-y-6">
-            <div>
-              <label htmlFor="startupUrl" className="block text-sm font-medium text-foreground mb-2">
-                URL inicial (opcional)
-              </label>
-              <input
-                type="text"
-                id="startupUrl"
-                value={formData.startupUrl}
-                onChange={(e) => updateFormData("startupUrl", e.target.value)}
-                placeholder="Ex: https://example.com"
-                className="w-full px-4 py-2.5 bg-background-tertiary border border-border rounded-lg text-foreground placeholder-foreground-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-colors"
-              />
-            </div>
-            <div>
-              <label htmlFor="startupScript" className="block text-sm font-medium text-foreground mb-2">
-                Script de inicialização (opcional)
-              </label>
-              <textarea
-                id="startupScript"
-                value={formData.startupScript}
-                onChange={(e) => updateFormData("startupScript", e.target.value)}
-                placeholder="// JavaScript a ser executado ao iniciar..."
-                rows={4}
-                className="w-full px-4 py-2.5 bg-background-tertiary border border-border rounded-lg text-foreground font-mono text-sm placeholder-foreground-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-colors resize-none"
-              />
-            </div>
-          </div>
-        );
       case 5:
+        // Summary step with consistency check
+        const errors = consistencyIssues.filter(i => i.level === "error");
+        const warnings = consistencyIssues.filter(i => i.level === "warning");
+        const isValid = errors.length === 0;
+        
         return (
           <div className="space-y-6">
-            <div className="p-4 rounded-lg bg-success/10 border border-success/20">
-              <h4 className="text-sm font-medium text-success mb-1">Pronto para criar!</h4>
-              <p className="text-xs text-foreground-muted">
-                Revise as configurações abaixo antes de criar o perfil.
-              </p>
+            {/* Consistency Check Panel */}
+            <div className={`p-4 rounded-lg border ${isValid ? "bg-success/10 border-success/20" : "bg-red-500/10 border-red-500/20"}`}>
+              <div className="flex items-center gap-2 mb-2">
+                {isValid ? (
+                  <svg className="w-5 h-5 text-success" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                )}
+                <h4 className={`text-sm font-medium ${isValid ? "text-success" : "text-red-400"}`}>
+                  {isValid ? "Verificação de consistência passou!" : `${errors.length} erro(s) encontrado(s)`}
+                </h4>
+              </div>
+              {consistencyIssues.length > 0 && (
+                <div className="space-y-2 mt-3">
+                  {errors.map((issue, i) => (
+                    <div key={`error-${i}`} className="flex items-start gap-2 text-xs">
+                      <span className="text-red-400">❌</span>
+                      <div>
+                        <p className="text-red-300">{issue.message}</p>
+                        <p className="text-foreground-muted">{issue.suggestion}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {warnings.map((issue, i) => (
+                    <div key={`warn-${i}`} className="flex items-start gap-2 text-xs">
+                      <span className="text-yellow-400">⚠️</span>
+                      <div>
+                        <p className="text-yellow-300">{issue.message}</p>
+                        <p className="text-foreground-muted">{issue.suggestion}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
+
+            {/* Profile Summary */}
             <div className="space-y-4">
-              <div className="flex justify-between py-2 border-b border-border">
-                <span className="text-sm text-foreground-muted">Nome</span>
-                <span className="text-sm text-foreground font-medium">
-                  {formData.name || "Não definido"}
-                </span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-border">
-                <span className="text-sm text-foreground-muted">Sistema Operacional</span>
-                <span className="text-sm text-foreground font-medium capitalize">
-                  {formData.os}
-                </span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-border">
-                <span className="text-sm text-foreground-muted">Proxy</span>
-                <span className="text-sm text-foreground font-medium">
-                  {formData.proxyType === "none" ? "Nenhum" : formData.proxyAddress || "Configurado"}
-                </span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-border">
-                <span className="text-sm text-foreground-muted">URL Inicial</span>
-                <span className="text-sm text-foreground font-medium">
-                  {formData.startupUrl || "Nenhuma"}
-                </span>
+              <h4 className="text-sm font-medium text-foreground">Resumo do Perfil</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex justify-between py-2 border-b border-border">
+                  <span className="text-sm text-foreground-muted">Nome</span>
+                  <span className="text-sm text-foreground font-medium">
+                    {formData.name || "Não definido"}
+                  </span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-border">
+                  <span className="text-sm text-foreground-muted">Template</span>
+                  <span className="text-sm text-foreground font-medium">
+                    {PROFILE_TEMPLATES.find(t => t.id === formData.templateId)?.name || "Custom"}
+                  </span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-border">
+                  <span className="text-sm text-foreground-muted">Sistema Operacional</span>
+                  <span className="text-sm text-foreground font-medium capitalize">
+                    {formData.os}
+                  </span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-border">
+                  <span className="text-sm text-foreground-muted">Platform</span>
+                  <span className="text-sm text-foreground font-medium">
+                    {formData.platform || "Auto"}
+                  </span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-border">
+                  <span className="text-sm text-foreground-muted">Screen</span>
+                  <span className="text-sm text-foreground font-medium">
+                    {formData.screenWidth}x{formData.screenHeight} @{formData.devicePixelRatio}x
+                  </span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-border">
+                  <span className="text-sm text-foreground-muted">Proxy</span>
+                  <span className="text-sm text-foreground font-medium">
+                    {formData.proxyType === "none" ? "Nenhum" : formData.proxyAddress || "Configurado"}
+                  </span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-border">
+                  <span className="text-sm text-foreground-muted">WebRTC</span>
+                  <span className="text-sm text-foreground font-medium capitalize">
+                    {formData.webrtcMode}
+                  </span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-border">
+                  <span className="text-sm text-foreground-muted">Timezone</span>
+                  <span className="text-sm text-foreground font-medium">
+                    {formData.timezone}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -300,11 +794,11 @@ export default function NewProfilePage() {
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-foreground">{steps[currentStep].label}</h3>
               <p className="text-sm text-foreground-muted mt-1">
-                {currentStep === 0 && "Defina as informações básicas do perfil."}
-                {currentStep === 1 && "Configure as propriedades de fingerprint."}
-                {currentStep === 2 && "Configure as opções de rede e proxy."}
-                {currentStep === 3 && "Configure o armazenamento de dados."}
-                {currentStep === 4 && "Configure scripts e automação."}
+                {currentStep === 0 && "Escolha um modelo pré-configurado para começar."}
+                {currentStep === 1 && "Defina as informações básicas do perfil."}
+                {currentStep === 2 && "Configure as propriedades de fingerprint."}
+                {currentStep === 3 && "Configure as opções de rede e proxy."}
+                {currentStep === 4 && "Configure o armazenamento de dados."}
                 {currentStep === 5 && "Revise e confirme as configurações."}
               </p>
             </div>
@@ -332,11 +826,15 @@ export default function NewProfilePage() {
               </svg>
             </Button>
           ) : (
-            <Button variant="primary" onClick={handleCreate}>
+            <Button 
+              variant="primary" 
+              onClick={handleCreate}
+              disabled={consistencyIssues.some(i => i.level === "error")}
+            >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              Criar perfil (mock)
+              Criar perfil
             </Button>
           )}
         </div>
