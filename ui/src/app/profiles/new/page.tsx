@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Shell } from "@/components/layout";
 import { Button, Card, CardContent, Stepper } from "@/components/ui";
+import { PROFILE_PRESETS, getPresetById } from "@/lib/presets";
 
 const steps = [
   { label: "Básico" },
@@ -18,6 +19,7 @@ const steps = [
 interface FormData {
   name: string;
   notes: string;
+  template: string;
   userAgent: string;
   os: string;
   proxyType: string;
@@ -33,6 +35,7 @@ export default function NewProfilePage() {
   const [formData, setFormData] = useState<FormData>({
     name: "",
     notes: "",
+    template: "",
     userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
     os: "windows",
     proxyType: "none",
@@ -44,6 +47,24 @@ export default function NewProfilePage() {
 
   const updateFormData = (field: keyof FormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleTemplateSelect = (templateId: string) => {
+    const preset = getPresetById(templateId);
+    if (preset) {
+      setFormData((prev) => ({
+        ...prev,
+        template: templateId,
+        os: preset.os,
+        userAgent: preset.userAgent,
+      }));
+    } else {
+      // Reset to empty template
+      setFormData((prev) => ({
+        ...prev,
+        template: "",
+      }));
+    }
   };
 
   const handleNext = () => {
@@ -69,6 +90,59 @@ export default function NewProfilePage() {
       case 0:
         return (
           <div className="space-y-6">
+            {/* Template Selector */}
+            <div>
+              <label htmlFor="template" className="block text-sm font-medium text-foreground mb-2">
+                Template / Modelo
+              </label>
+              <select
+                id="template"
+                value={formData.template}
+                onChange={(e) => handleTemplateSelect(e.target.value)}
+                className="w-full px-4 py-2.5 bg-background-tertiary border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-colors"
+              >
+                <option value="">Selecione um template (opcional)</option>
+                <optgroup label="macOS / Apple Silicon">
+                  {PROFILE_PRESETS.filter(p => p.category === "macos").map((preset) => (
+                    <option key={preset.id} value={preset.id}>
+                      {preset.displayName}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Windows">
+                  {PROFILE_PRESETS.filter(p => p.category === "windows").map((preset) => (
+                    <option key={preset.id} value={preset.id}>
+                      {preset.displayName}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Linux">
+                  {PROFILE_PRESETS.filter(p => p.category === "linux").map((preset) => (
+                    <option key={preset.id} value={preset.id}>
+                      {preset.displayName}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+              <p className="text-xs text-foreground-muted mt-2">
+                Selecione um template para pré-configurar o perfil com valores otimizados.
+              </p>
+            </div>
+
+            {/* Help text for Mac M-series templates */}
+            {formData.template && formData.template.includes("macos_m") && (
+              <div className="p-4 rounded-lg bg-accent/10 border border-accent/20">
+                <h4 className="text-sm font-medium text-accent mb-2">
+                  ℹ️ Sobre os templates Mac M-series
+                </h4>
+                <p className="text-xs text-foreground-muted">
+                  Estes templates são <strong>perfis Mac modernos</strong> baseados em fingerprint coerente
+                  (User Agent, WebGL, screen, etc.). Diferenças exatas entre M1/M2/M3/M4 são principalmente
+                  de fingerprint fino, que será refinado com dados reais em futuras versões.
+                </p>
+              </div>
+            )}
+
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-foreground mb-2">
                 Nome do perfil
@@ -100,6 +174,22 @@ export default function NewProfilePage() {
       case 1:
         return (
           <div className="space-y-6">
+            {/* Show selected template info */}
+            {formData.template && (
+              <div className="p-4 rounded-lg bg-background-tertiary border border-border">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-sm font-medium text-foreground">
+                    Template: {getPresetById(formData.template)?.displayName}
+                  </span>
+                </div>
+                <p className="text-xs text-foreground-muted">
+                  Os valores abaixo foram pré-configurados pelo template selecionado. Você pode ajustá-los manualmente se necessário.
+                </p>
+              </div>
+            )}
             <div>
               <label htmlFor="os" className="block text-sm font-medium text-foreground mb-2">
                 Sistema Operacional
@@ -242,6 +332,12 @@ export default function NewProfilePage() {
                 <span className="text-sm text-foreground-muted">Nome</span>
                 <span className="text-sm text-foreground font-medium">
                   {formData.name || "Não definido"}
+                </span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="text-sm text-foreground-muted">Template</span>
+                <span className="text-sm text-foreground font-medium">
+                  {formData.template ? getPresetById(formData.template)?.displayName : "Nenhum"}
                 </span>
               </div>
               <div className="flex justify-between py-2 border-b border-border">
