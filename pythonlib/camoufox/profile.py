@@ -20,7 +20,9 @@ import orjson
 PROFILE_SCHEMA_VERSION = "1.0.0"
 
 # Default profiles directory (relative to repository root)
-DEFAULT_PROFILES_DIR = Path(__file__).parent.parent.parent.parent / "profiles"
+# Use resolve() to get absolute path and avoid fragile parent traversals
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+DEFAULT_PROFILES_DIR = _REPO_ROOT / "profiles"
 
 
 @dataclass

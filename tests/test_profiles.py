@@ -1,18 +1,18 @@
 """
 Unit tests for Camoufox profile model, presets, and consistency checker.
 
-Run with: pytest test_profiles.py -v
+Run with: 
+    PYTHONPATH=/path/to/camoufox/pythonlib pytest test_profiles.py -v
+    
+Or install camoufox package:
+    pip install -e /path/to/camoufox/pythonlib
+    pytest test_profiles.py -v
 """
 
-import json
 import tempfile
 from pathlib import Path
 
 import pytest
-
-# Import from the camoufox module
-import sys
-sys.path.insert(0, str(Path(__file__).parent.parent / "pythonlib"))
 
 from camoufox.profile import (
     LocaleConfig,

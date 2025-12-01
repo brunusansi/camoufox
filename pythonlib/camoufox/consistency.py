@@ -271,9 +271,14 @@ def check_webgl_os_consistency(profile: ProfileConfig) -> Optional[ConsistencyIs
     renderer = profile.webgl.renderer.lower()
     target_os = profile.target_os
     
-    # Check for obvious mismatches
+    # Check for obvious mismatches using more specific patterns
+    # Direct3D is Windows-specific, ANGLE is typically used with Direct3D on Windows
     if target_os == "macos":
-        if "direct3d" in renderer or "angle" in vendor:
+        # Check for Direct3D which is Windows-specific
+        has_direct3d = "direct3d" in renderer or "d3d" in renderer
+        # ANGLE in vendor suggests Windows (ANGLE wraps Direct3D)
+        has_angle_vendor = vendor.startswith("google inc") and "angle" in renderer
+        if has_direct3d or has_angle_vendor:
             return ConsistencyIssue(
                 level=ConsistencyLevel.ERROR,
                 code="WEBGL_OS_MISMATCH",
@@ -283,7 +288,10 @@ def check_webgl_os_consistency(profile: ProfileConfig) -> Optional[ConsistencyIs
             )
     
     if target_os == "windows":
-        if "apple" in vendor.lower() and "apple" in renderer.lower():
+        # Check for Apple GPU which is macOS-specific
+        is_apple_vendor = vendor.startswith("apple")
+        is_apple_renderer = renderer.startswith("apple")
+        if is_apple_vendor and is_apple_renderer:
             return ConsistencyIssue(
                 level=ConsistencyLevel.ERROR,
                 code="WEBGL_OS_MISMATCH",
@@ -293,7 +301,9 @@ def check_webgl_os_consistency(profile: ProfileConfig) -> Optional[ConsistencyIs
             )
     
     if target_os == "linux":
-        if "direct3d" in renderer:
+        # Direct3D is Windows-specific
+        has_direct3d = "direct3d" in renderer or "d3d" in renderer
+        if has_direct3d:
             return ConsistencyIssue(
                 level=ConsistencyLevel.ERROR,
                 code="WEBGL_OS_MISMATCH",

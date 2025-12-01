@@ -303,64 +303,95 @@ export default function NewProfilePage() {
   };
 
   const handleCreate = async () => {
-    // Generate profile JSON
+    // Helper to sanitize string input (prevent XSS in stored data)
+    const sanitize = (str: string): string => {
+      if (!str) return str;
+      return str.slice(0, 5000); // Limit string length
+    };
+
+    // Generate a simple UUID fallback for browsers without crypto.randomUUID
+    const generateId = (): string => {
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+      }
+      // Fallback UUID generation
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    };
+
+    // Generate profile JSON with sanitized inputs
     const profile = {
-      id: crypto.randomUUID(),
-      name: formData.name || "Untitled Profile",
-      notes: formData.notes,
+      id: generateId(),
+      name: sanitize(formData.name) || "Untitled Profile",
+      notes: sanitize(formData.notes),
       version: "1.0.0",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       target_os: formData.os,
       browser_family: "firefox",
       navigator: {
-        user_agent: formData.userAgent,
-        platform: formData.platform,
-        oscpu: formData.oscpu,
+        user_agent: sanitize(formData.userAgent),
+        platform: sanitize(formData.platform),
+        oscpu: sanitize(formData.oscpu),
         hardware_concurrency: 8,
         max_touch_points: 0,
         languages: [formData.locale, formData.locale.split("-")[0]],
       },
       screen: {
-        width: formData.screenWidth,
-        height: formData.screenHeight,
-        avail_width: formData.screenWidth,
-        avail_height: formData.screenHeight - 40,
-        device_pixel_ratio: formData.devicePixelRatio,
+        width: Math.max(0, Math.min(formData.screenWidth, 10000)),
+        height: Math.max(0, Math.min(formData.screenHeight, 10000)),
+        avail_width: Math.max(0, Math.min(formData.screenWidth, 10000)),
+        avail_height: Math.max(0, Math.min(formData.screenHeight - 40, 10000)),
+        device_pixel_ratio: Math.max(0.5, Math.min(formData.devicePixelRatio, 4)),
         color_depth: 24,
       },
       locale: {
         language: formData.locale.split("-")[0],
         region: formData.locale.split("-")[1] || "US",
-        timezone: formData.timezone,
+        timezone: sanitize(formData.timezone),
       },
       webgl: {
         enabled: true,
-        vendor: formData.webglVendor,
-        renderer: formData.webglRenderer,
+        vendor: sanitize(formData.webglVendor),
+        renderer: sanitize(formData.webglRenderer),
       },
       proxy: {
         type: formData.proxyType,
-        server: formData.proxyAddress,
+        server: sanitize(formData.proxyAddress),
       },
       webrtc: {
         mode: formData.webrtcMode,
       },
       storage: {
-        user_data_dir: formData.storagePath || null,
+        user_data_dir: formData.storagePath ? sanitize(formData.storagePath) : null,
       },
     };
 
     console.log("Creating profile:", JSON.stringify(profile, null, 2));
     
     // In a real implementation, this would save to the backend
-    // For now, we'll save to localStorage as a demo
-    const existingProfiles = JSON.parse(localStorage.getItem("camoufox_profiles") || "[]");
-    existingProfiles.push(profile);
-    localStorage.setItem("camoufox_profiles", JSON.stringify(existingProfiles));
-    
-    alert("Perfil criado com sucesso!");
-    router.push("/profiles");
+    // For now, we'll save to localStorage as a demo with size limits
+    try {
+      const existingProfiles = JSON.parse(localStorage.getItem("camoufox_profiles") || "[]");
+      
+      // Limit number of stored profiles to prevent storage abuse
+      if (existingProfiles.length >= 100) {
+        alert("Limite de perfis atingido. Delete alguns perfis antes de criar novos.");
+        return;
+      }
+      
+      existingProfiles.push(profile);
+      localStorage.setItem("camoufox_profiles", JSON.stringify(existingProfiles));
+      
+      alert("Perfil criado com sucesso!");
+      router.push("/profiles");
+    } catch (e) {
+      console.error("Failed to save profile:", e);
+      alert("Erro ao salvar perfil. Verifique o espaço de armazenamento.");
+    }
   };
 
   const renderStepContent = () => {

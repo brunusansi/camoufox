@@ -273,9 +273,38 @@ def get_windows_10_preset(
     Returns:
         ProfileConfig configured for Windows 10.
     """
-    profile = get_windows_11_preset(name=name, gpu_type=gpu_type)
-    profile.navigator.user_agent = WINDOWS_10_UA
-    return profile
+    # Select WebGL config based on GPU type
+    webgl_configs = {
+        "nvidia": WINDOWS_NVIDIA_WEBGL,
+        "amd": WINDOWS_AMD_WEBGL,
+        "intel": WINDOWS_INTEL_WEBGL,
+    }
+    webgl = webgl_configs.get(gpu_type, WINDOWS_NVIDIA_WEBGL)
+    
+    return ProfileConfig(
+        name=name,
+        target_os="windows",
+        browser_family="firefox",
+        navigator=NavigatorConfig(
+            user_agent=WINDOWS_10_UA,  # Windows 10 specific UA
+            platform="Win32",
+            oscpu="Windows NT 10.0; Win64; x64",
+            hardware_concurrency=8,
+            max_touch_points=0,
+            languages=["en-US", "en"],
+        ),
+        screen=WINDOWS_FHD_SCREEN,
+        locale=LocaleConfig(
+            language="en",
+            region="US",
+            timezone="America/New_York",
+        ),
+        webgl=WebGLConfig(
+            enabled=webgl.enabled,
+            vendor=webgl.vendor,
+            renderer=webgl.renderer,
+        ),
+    )
 
 
 # ============================================================================
