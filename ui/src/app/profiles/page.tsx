@@ -12,8 +12,10 @@ import type { ProfileConfig } from "@/lib/profile-types";
 const DISPLAY = {
   /** Maximum length for proxy server display */
   PROXY_SERVER_MAX_LENGTH: 30,
-  /** Maximum length for user agent display in table */
+  /** Maximum length for user agent display in table (desktop) */
   USER_AGENT_MAX_LENGTH: 60,
+  /** Maximum length for user agent display in table (mobile) */
+  USER_AGENT_MAX_LENGTH_MOBILE: 30,
 } as const;
 
 /**
@@ -181,16 +183,16 @@ export default function ProfilesPage() {
 
   return (
     <Shell title="Perfis">
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+      <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6 px-2 sm:px-0">
+        {/* Header - responsive layout */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-foreground">Perfis</h2>
-            <p className="text-foreground-muted mt-1">
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground">Perfis</h2>
+            <p className="text-foreground-muted mt-1 text-sm sm:text-base">
               Gerencie seus perfis de navegador anti-detect.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 self-start sm:self-auto">
             <Button variant="ghost" onClick={fetchProfiles} disabled={isLoading}>
               <svg
                 className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
@@ -209,7 +211,7 @@ export default function ProfilesPage() {
             <Link href="/profiles/new">
               <Button variant="primary">
                 <svg
-                  className="w-4 h-4 mr-2"
+                  className="w-4 h-4 sm:mr-2"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -221,7 +223,8 @@ export default function ProfilesPage() {
                     d="M12 6v6m0 0v6m0-6h6m-6 0H6"
                   />
                 </svg>
-                Novo perfil
+                <span className="hidden sm:inline">Novo perfil</span>
+                <span className="sm:hidden">Novo</span>
               </Button>
             </Link>
           </div>
@@ -284,95 +287,232 @@ export default function ProfilesPage() {
           <Card>
             <CardContent className="p-0">
               {profiles.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left text-xs font-medium text-foreground-muted uppercase tracking-wider px-6 py-4">
-                          Nome
-                        </th>
-                        <th className="text-left text-xs font-medium text-foreground-muted uppercase tracking-wider px-6 py-4">
-                          User Agent
-                        </th>
-                        <th className="text-left text-xs font-medium text-foreground-muted uppercase tracking-wider px-6 py-4">
-                          Proxy
-                        </th>
-                        <th className="text-left text-xs font-medium text-foreground-muted uppercase tracking-wider px-6 py-4">
-                          Criado em
-                        </th>
-                        <th className="text-right text-xs font-medium text-foreground-muted uppercase tracking-wider px-6 py-4">
-                          Ações
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {profiles.map((profile) => (
-                        <tr
-                          key={profile.id}
-                          className="hover:bg-background-tertiary transition-colors"
-                        >
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                                <span className="text-sm">
-                                  {getOSIcon(profile.targetOS)}
-                                </span>
-                              </div>
-                              <span className="text-sm font-medium text-foreground">
-                                {profile.name}
+                <>
+                  {/* Mobile Card Layout */}
+                  <div className="md:hidden divide-y divide-border">
+                    {profiles.map((profile) => (
+                      <div
+                        key={profile.id}
+                        className="p-4 hover:bg-background-tertiary transition-colors"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+                              <span className="text-lg">
+                                {getOSIcon(profile.targetOS)}
                               </span>
                             </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span
-                              className="text-sm text-foreground-muted font-mono truncate block max-w-xs"
-                              title={profile.userAgent}
+                            <div className="min-w-0 flex-1">
+                              <h4 className="text-sm font-medium text-foreground truncate">
+                                {profile.name}
+                              </h4>
+                              <p className="text-xs text-foreground-muted mt-0.5">
+                                {profile.createdAt} • {profile.proxy}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRun(profile.id)}
+                              disabled={runningProfiles.has(profile.id)}
+                              className="text-success hover:text-success hover:bg-success/10 p-2"
+                              title="Iniciar perfil"
                             >
-                              {profile.userAgent.length > DISPLAY.USER_AGENT_MAX_LENGTH
-                                ? `${profile.userAgent.substring(0, DISPLAY.USER_AGENT_MAX_LENGTH)}...`
-                                : profile.userAgent}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="text-sm text-foreground-muted">
-                              {profile.proxy}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="text-sm text-foreground-muted">
-                              {profile.createdAt}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleRun(profile.id)}
-                                disabled={runningProfiles.has(profile.id)}
-                                className="text-success hover:text-success hover:bg-success/10"
+                              {runningProfiles.has(profile.id) ? (
+                                <svg
+                                  className="w-5 h-5 animate-spin"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <circle
+                                    className="opacity-25"
+                                    cx="12"
+                                    cy="12"
+                                    r="10"
+                                    stroke="currentColor"
+                                    strokeWidth="4"
+                                  />
+                                  <path
+                                    className="opacity-75"
+                                    fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                  />
+                                </svg>
+                              ) : (
+                                <svg
+                                  className="w-5 h-5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                                  />
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                  />
+                                </svg>
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(profile.id)}
+                              className="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-2"
+                              title="Deletar perfil"
+                            >
+                              <svg
+                                className="w-5 h-5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
                               >
-                                {runningProfiles.has(profile.id) ? (
-                                  <svg
-                                    className="w-4 h-4 animate-spin"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <circle
-                                      className="opacity-25"
-                                      cx="12"
-                                      cy="12"
-                                      r="10"
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                />
+                              </svg>
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Desktop Table Layout */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-left text-xs font-medium text-foreground-muted uppercase tracking-wider px-6 py-4">
+                            Nome
+                          </th>
+                          <th className="text-left text-xs font-medium text-foreground-muted uppercase tracking-wider px-6 py-4">
+                            User Agent
+                          </th>
+                          <th className="text-left text-xs font-medium text-foreground-muted uppercase tracking-wider px-6 py-4 hidden lg:table-cell">
+                            Proxy
+                          </th>
+                          <th className="text-left text-xs font-medium text-foreground-muted uppercase tracking-wider px-6 py-4">
+                            Criado em
+                          </th>
+                          <th className="text-right text-xs font-medium text-foreground-muted uppercase tracking-wider px-6 py-4">
+                            Ações
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {profiles.map((profile) => (
+                          <tr
+                            key={profile.id}
+                            className="hover:bg-background-tertiary transition-colors"
+                          >
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+                                  <span className="text-sm">
+                                    {getOSIcon(profile.targetOS)}
+                                  </span>
+                                </div>
+                                <span className="text-sm font-medium text-foreground">
+                                  {profile.name}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span
+                                className="text-sm text-foreground-muted font-mono truncate block max-w-[200px] lg:max-w-xs"
+                                title={profile.userAgent}
+                              >
+                                {profile.userAgent.length > DISPLAY.USER_AGENT_MAX_LENGTH
+                                  ? `${profile.userAgent.substring(0, DISPLAY.USER_AGENT_MAX_LENGTH)}...`
+                                  : profile.userAgent}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 hidden lg:table-cell">
+                              <span className="text-sm text-foreground-muted whitespace-nowrap">
+                                {profile.proxy}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="text-sm text-foreground-muted whitespace-nowrap">
+                                {profile.createdAt}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleRun(profile.id)}
+                                  disabled={runningProfiles.has(profile.id)}
+                                  className="text-success hover:text-success hover:bg-success/10"
+                                  title="Iniciar perfil"
+                                >
+                                  {runningProfiles.has(profile.id) ? (
+                                    <svg
+                                      className="w-4 h-4 animate-spin"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <circle
+                                        className="opacity-25"
+                                        cx="12"
+                                        cy="12"
+                                        r="10"
+                                        stroke="currentColor"
+                                        strokeWidth="4"
+                                      />
+                                      <path
+                                        className="opacity-75"
+                                        fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                      />
+                                    </svg>
+                                  ) : (
+                                    <svg
+                                      className="w-4 h-4"
+                                      fill="none"
                                       stroke="currentColor"
-                                      strokeWidth="4"
-                                    />
-                                    <path
-                                      className="opacity-75"
-                                      fill="currentColor"
-                                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                    />
-                                  </svg>
-                                ) : (
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                                      />
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                      />
+                                    </svg>
+                                  )}
+                                  <span className="ml-2">
+                                    {runningProfiles.has(profile.id)
+                                      ? "Iniciando..."
+                                      : "Iniciar"}
+                                  </span>
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDelete(profile.id)}
+                                  className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                  title="Deletar perfil"
+                                >
                                   <svg
                                     className="w-4 h-4"
                                     fill="none"
@@ -383,55 +523,24 @@ export default function ProfilesPage() {
                                       strokeLinecap="round"
                                       strokeLinejoin="round"
                                       strokeWidth={2}
-                                      d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-                                    />
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                                     />
                                   </svg>
-                                )}
-                                <span className="ml-2">
-                                  {runningProfiles.has(profile.id)
-                                    ? "Iniciando..."
-                                    : "Iniciar"}
-                                </span>
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDelete(profile.id)}
-                                className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                              >
-                                <svg
-                                  className="w-4 h-4"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                  />
-                                </svg>
-                                <span className="ml-2">Deletar</span>
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                                  <span className="ml-2">Deletar</span>
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               ) : (
-                <div className="flex flex-col items-center justify-center py-16 px-6">
-                  <div className="w-16 h-16 rounded-2xl bg-background-tertiary flex items-center justify-center mb-4">
+                <div className="flex flex-col items-center justify-center py-12 sm:py-16 px-4 sm:px-6">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-background-tertiary flex items-center justify-center mb-4">
                     <svg
-                      className="w-8 h-8 text-foreground-muted"
+                      className="w-7 h-7 sm:w-8 sm:h-8 text-foreground-muted"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -444,10 +553,10 @@ export default function ProfilesPage() {
                       />
                     </svg>
                   </div>
-                  <h3 className="text-lg font-semibold text-foreground mb-2">
+                  <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2 text-center">
                     Nenhum perfil encontrado
                   </h3>
-                  <p className="text-sm text-foreground-muted text-center mb-6 max-w-sm">
+                  <p className="text-sm text-foreground-muted text-center mb-6 max-w-sm px-4">
                     Você ainda não criou nenhum perfil. Crie seu primeiro perfil
                     para começar a usar o Camoufox.
                   </p>
